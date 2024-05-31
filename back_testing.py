@@ -2,9 +2,20 @@ import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.formatting.rule import ColorScaleRule
 from openpyxl.utils import get_column_letter
+import yfinance as yf
+from datetime import datetime, timedelta
 
 # Load your data
-data = pd.read_csv("C:\\data\\vishnu\\trading_with_gpt\\csv\\ADANIENT.BO.csv")
+# data = pd.read_csv("C:\\data\\vishnu\\trading_with_gpt\\csv\\ADANIENT.BO.csv")
+end_date = datetime.now().date()
+start_date = end_date - timedelta(days=180)  # Considering data from the past 'days' days
+
+ticker_symbol = 'TATAMOTORS.NS'
+# Download data from Yahoo Finance
+data = yf.download(ticker_symbol, start=start_date, end=end_date)
+
+# Reset index to make Date a column instead of index
+data.reset_index(inplace=True)
 
 # Calculate EMAs
 data['EMA_5'] = data['Close'].ewm(span=5, adjust=False).mean()
