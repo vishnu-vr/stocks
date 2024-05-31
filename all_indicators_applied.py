@@ -4,7 +4,7 @@ from openpyxl.styles import Color, PatternFill
 from openpyxl.formatting.rule import ColorScaleRule
 
 # Load your data
-data = pd.read_csv("C:\\data\\vishnu\\trading_with_gpt\\csv\\HDFCBANK.NS.csv")
+data = pd.read_csv("C:\\data\\vishnu\\trading_with_gpt\\csv\\ADANIENT.BO.csv")
 
 # Calculate EMAs
 data['EMA_5'] = data['Close'].ewm(span=5, adjust=False).mean()
@@ -61,7 +61,7 @@ data['Buy_Signal_Percentage'] = (
 )
 
 # Save the DataFrame to Excel
-output_file = "HDFC_Analysis_with_Indicators.xlsx"
+output_file = "Analysis_with_Indicators.xlsx"
 data.to_excel(output_file, index=False)
 
 # Load the workbook and select the active worksheet
