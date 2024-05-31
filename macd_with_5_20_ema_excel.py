@@ -22,8 +22,11 @@ data['S1'] = 2 * data['Pivot'] - data['High'].shift(1)
 data['R2'] = data['Pivot'] + (data['High'].shift(1) - data['Low'].shift(1))
 data['S2'] = data['Pivot'] - (data['High'].shift(1) - data['Low'].shift(1))
 
-# Determine if it's a good time to buy based on MACD and Pivot Points
-data['Buy_Signal'] = (data['MACD'] > data['Signal']) & (data['Close'] > data['Pivot'])
+# Determine if it's a good time to buy based on MACD, Pivot Points, and EMA conditions
+data['Buy_Signal'] = (data['MACD'] > data['Signal']) & (data['Close'] > data['Pivot']) & (data['EMA_5'] > data['EMA_20'])
+
+# Save the DataFrame to Excel
+data.to_excel("HDFC_Analysis.xlsx", index=False)
 
 # Plotting
 plt.figure(figsize=(14, 14))
