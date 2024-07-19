@@ -28,22 +28,18 @@ def calculate_rsi(data, window=14):
 # Function to check for MACD crossover and mark buy/sell signals
 def check_macd_signals(data):
     macd_signals = [''] * len(data)
-
     for i in range(1, len(data)):
         if data['MACD'].iloc[i] > data['Signal_Line'].iloc[i] and data['MACD'].iloc[i-1] <= data['Signal_Line'].iloc[i-1]:
             if data['MACD'].iloc[i] < 0 and data['Signal_Line'].iloc[i] < 0:
                 macd_signals[i] = 'Positive_Crossover'
-
     return macd_signals
 
 # Function to check RSI conditions
 def check_rsi_signals(data):
     rsi_signals = [''] * len(data)
-
     for i in range(1, len(data)):
         if data['RSI'].iloc[i] < 70:
             rsi_signals[i] = 'Below_70'
-
     return rsi_signals
 
 # Function to fetch stock data
@@ -79,7 +75,7 @@ if __name__ == "__main__":
             data['Final_Signal'].iloc[i] = 'Buy'
             last_buy_price = data['Close'].iloc[i]
             previous_signal = 'Buy'
-        if previous_signal == 'Buy':
+        elif previous_signal == 'Buy':
             if ((data['High'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002 or \
                ((data['Low'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002 or \
                ((data['Open'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002 or \
@@ -87,7 +83,6 @@ if __name__ == "__main__":
                 last_buy_price = None
                 data['Final_Signal'].iloc[i] = 'Sell'
                 previous_signal = 'Sell'
-
 
     # Convert datetime index to timezone-naive
     data.index = data.index.tz_localize(None)
