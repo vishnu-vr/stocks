@@ -2,6 +2,7 @@ import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
 import pytz
+import time
 
 # Function to calculate EMA
 def ema(series, span):
@@ -159,4 +160,10 @@ def main_driver(live_day = False):
     print("Data with Buy/Sell signals has been written to macd_rsi_supertrend_signals.xlsx")
 
 if __name__ == "__main__":
-    main_driver()
+    live_day = False
+    if (live_day):
+        while True:
+            main_driver(live_day)
+            time.sleep(30)
+    else:
+        main_driver(live_day)
