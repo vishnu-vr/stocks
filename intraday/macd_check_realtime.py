@@ -46,23 +46,23 @@ def calculate_super_trend(data, period=14, multiplier=3):
     
     for i in range(1, len(data)):
         if data['Close'].iloc[i-1] > data['Final_Upper_Band'].iloc[i-1]:
-            data['Final_Upper_Band'].iloc[i] = min(data['Basic_Upper_Band'].iloc[i], data['Final_Upper_Band'].iloc[i-1])
+            data.loc[data.index[i], 'Final_Upper_Band'] = min(data['Basic_Upper_Band'].iloc[i], data['Final_Upper_Band'].iloc[i-1])
         else:
-            data['Final_Upper_Band'].iloc[i] = data['Basic_Upper_Band'].iloc[i]
+            data.loc[data.index[i], 'Final_Upper_Band'] = data['Basic_Upper_Band'].iloc[i]
 
         if data['Close'].iloc[i-1] < data['Final_Lower_Band'].iloc[i-1]:
-            data['Final_Lower_Band'].iloc[i] = max(data['Basic_Lower_Band'].iloc[i], data['Final_Lower_Band'].iloc[i-1])
+            data.loc[data.index[i], 'Final_Lower_Band'] = max(data['Basic_Lower_Band'].iloc[i], data['Final_Lower_Band'].iloc[i-1])
         else:
-            data['Final_Lower_Band'].iloc[i] = data['Basic_Lower_Band'].iloc[i]
+            data.loc[data.index[i], 'Final_Lower_Band'] = data['Basic_Lower_Band'].iloc[i]
             
     data['Super_Trend'] = 0.0
     for i in range(1, len(data)):
         if data['Close'].iloc[i-1] <= data['Final_Upper_Band'].iloc[i-1] and data['Close'].iloc[i] > data['Final_Upper_Band'].iloc[i]:
-            data['Super_Trend'].iloc[i] = data['Final_Lower_Band'].iloc[i]
+            data.loc[data.index[i], 'Super_Trend'] = data['Final_Lower_Band'].iloc[i]
         elif data['Close'].iloc[i-1] >= data['Final_Lower_Band'].iloc[i-1] and data['Close'].iloc[i] < data['Final_Lower_Band'].iloc[i]:
-            data['Super_Trend'].iloc[i] = data['Final_Upper_Band'].iloc[i]
+            data.loc[data.index[i], 'Super_Trend'] = data['Final_Upper_Band'].iloc[i]
         else:
-            data['Super_Trend'].iloc[i] = data['Super_Trend'].iloc[i-1]
+            data.loc[data.index[i], 'Super_Trend'] = data['Super_Trend'].iloc[i-1]
 
     return data
 
@@ -91,12 +91,25 @@ def get_stock_data(ticker):
     data.index = data.index.tz_convert('Asia/Kolkata')
     return data
 
-# inform the user to buy somehow, windows popup ? something to get user attention
+# Inform the user to buy
 def prompt_user_buy():
-    print("buy this now dude buy !!!!")
+    print("Buy this now!")
     return None
 
-def main_driver():
+def live_day_run(data, i):
+    # Get the current system timestamp and make it timezone-aware
+    current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
+
+    # Get the timestamp of the current data point and ensure it's timezone-aware
+    data_timestamp = data.index[i].to_pydatetime().astimezone(pytz.timezone('Asia/Kolkata'))
+
+    time_difference = current_time - data_timestamp
+
+    # Check if the time difference is less than or equal to 2 minutes
+    if abs(time_difference) <= timedelta(minutes=2):
+        prompt_user_buy()
+
+def main_driver(live_day = False):
     ticker = 'ELECTCAST.NS'
     data = get_stock_data(ticker)
 
@@ -125,16 +138,8 @@ def main_driver():
             last_buy_price = data['Close'].iloc[i]
             previous_signal = 'Buy'
 
-            # Get the current system timestamp and make it timezone-aware
-            current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
-
-            # Convert the timestamp from data.index[0] to a datetime object and ensure it's timezone-aware
-            data_timestamp = data.index[0].to_pydatetime().astimezone(pytz.timezone('Asia/Kolkata'))
-
-            time_difference = current_time - data_timestamp
-
-            if abs(time_difference) == timedelta(minutes=2):
-                prompt_user_buy()
+            if live_day:
+                live_day_run(data, i)
 
         elif previous_signal == 'Buy':
             if ((data['High'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002 or \
