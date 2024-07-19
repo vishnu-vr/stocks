@@ -91,7 +91,12 @@ def get_stock_data(ticker):
     data.index = data.index.tz_convert('Asia/Kolkata')
     return data
 
-if __name__ == "__main__":
+# inform the user to buy somehow, windows popup ? something to get user attention
+def prompt_user_buy():
+    print("buy this now dude buy !!!!")
+    return None
+
+def main_driver():
     ticker = 'ELECTCAST.NS'
     data = get_stock_data(ticker)
 
@@ -119,6 +124,18 @@ if __name__ == "__main__":
             data.loc[data.index[i], 'Final_Signal'] = 'Buy'
             last_buy_price = data['Close'].iloc[i]
             previous_signal = 'Buy'
+
+            # Get the current system timestamp and make it timezone-aware
+            current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
+
+            # Convert the timestamp from data.index[0] to a datetime object and ensure it's timezone-aware
+            data_timestamp = data.index[0].to_pydatetime().astimezone(pytz.timezone('Asia/Kolkata'))
+
+            time_difference = current_time - data_timestamp
+
+            if abs(time_difference) == timedelta(minutes=2):
+                prompt_user_buy()
+
         elif previous_signal == 'Buy':
             if ((data['High'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002 or \
                ((data['Low'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002 or \
@@ -135,3 +152,6 @@ if __name__ == "__main__":
     data.to_excel('macd_rsi_supertrend_signals.xlsx', index=True)
 
     print("Data with Buy/Sell signals has been written to macd_rsi_supertrend_signals.xlsx")
+
+if __name__ == "__main__":
+    main_driver()
