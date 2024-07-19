@@ -26,7 +26,7 @@ def calculate_rsi(data, window=14):
     data['RSI'] = 100 - (100 / (1 + rs))
     return data
 
-# Function to calculate Average True Range (ATR)
+# Function to calculate ATR
 def calculate_atr(data, period=14):
     high_low = data['High'] - data['Low']
     high_close = (data['High'] - data['Close'].shift()).abs()
@@ -110,7 +110,7 @@ def live_day_run(data, i):
     if abs(time_difference) <= timedelta(minutes=2):
         prompt_user_buy()
 
-def main_driver(live_day = False):
+def main_driver(live_day=False):
     ticker = 'ELECTCAST.NS'
     data = get_stock_data(ticker)
 
@@ -161,9 +161,9 @@ def main_driver(live_day = False):
 
 if __name__ == "__main__":
     live_day = False
-    if (live_day):
+    if live_day:
         while True:
             main_driver(live_day)
-            time.sleep(30)
+            time.sleep(60)  # Delay for 1 minute
     else:
         main_driver(live_day)
