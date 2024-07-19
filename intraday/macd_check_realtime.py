@@ -25,6 +25,47 @@ def calculate_rsi(data, window=14):
     data['RSI'] = 100 - (100 / (1 + rs))
     return data
 
+# Function to calculate Average True Range (ATR)
+def calculate_atr(data, period=14):
+    high_low = data['High'] - data['Low']
+    high_close = (data['High'] - data['Close'].shift()).abs()
+    low_close = (data['Low'] - data['Close'].shift()).abs()
+    ranges = pd.concat([high_low, high_close, low_close], axis=1)
+    true_range = ranges.max(axis=1)
+    atr = true_range.rolling(window=period).mean()
+    return atr
+
+# Function to calculate Super Trend
+def calculate_super_trend(data, period=14, multiplier=3):
+    atr = calculate_atr(data, period)
+    data['Basic_Upper_Band'] = (data['High'] + data['Low']) / 2 + (multiplier * atr)
+    data['Basic_Lower_Band'] = (data['High'] + data['Low']) / 2 - (multiplier * atr)
+    
+    data['Final_Upper_Band'] = data['Basic_Upper_Band']
+    data['Final_Lower_Band'] = data['Basic_Lower_Band']
+    
+    for i in range(1, len(data)):
+        if data['Close'].iloc[i-1] > data['Final_Upper_Band'].iloc[i-1]:
+            data['Final_Upper_Band'].iloc[i] = min(data['Basic_Upper_Band'].iloc[i], data['Final_Upper_Band'].iloc[i-1])
+        else:
+            data['Final_Upper_Band'].iloc[i] = data['Basic_Upper_Band'].iloc[i]
+
+        if data['Close'].iloc[i-1] < data['Final_Lower_Band'].iloc[i-1]:
+            data['Final_Lower_Band'].iloc[i] = max(data['Basic_Lower_Band'].iloc[i], data['Final_Lower_Band'].iloc[i-1])
+        else:
+            data['Final_Lower_Band'].iloc[i] = data['Basic_Lower_Band'].iloc[i]
+            
+    data['Super_Trend'] = 0.0
+    for i in range(1, len(data)):
+        if data['Close'].iloc[i-1] <= data['Final_Upper_Band'].iloc[i-1] and data['Close'].iloc[i] > data['Final_Upper_Band'].iloc[i]:
+            data['Super_Trend'].iloc[i] = data['Final_Lower_Band'].iloc[i]
+        elif data['Close'].iloc[i-1] >= data['Final_Lower_Band'].iloc[i-1] and data['Close'].iloc[i] < data['Final_Lower_Band'].iloc[i]:
+            data['Super_Trend'].iloc[i] = data['Final_Upper_Band'].iloc[i]
+        else:
+            data['Super_Trend'].iloc[i] = data['Super_Trend'].iloc[i-1]
+
+    return data
+
 # Function to check for MACD crossover and mark buy/sell signals
 def check_macd_signals(data):
     macd_signals = [''] * len(data)
@@ -51,7 +92,7 @@ def get_stock_data(ticker):
     return data
 
 if __name__ == "__main__":
-    ticker = 'TTML.NS'
+    ticker = 'ELECTCAST.NS'
     data = get_stock_data(ticker)
 
     # Calculate MACD
@@ -59,6 +100,9 @@ if __name__ == "__main__":
 
     # Calculate RSI
     data = calculate_rsi(data)
+
+    # Calculate Super Trend
+    # data = calculate_super_trend(data)
 
     # Check for MACD crossovers and mark Buy/Sell signals
     data['MACD_Signal'] = check_macd_signals(data)
@@ -88,6 +132,6 @@ if __name__ == "__main__":
     data.index = data.index.tz_localize(None)
 
     # Write the DataFrame to an Excel file
-    data.to_excel('macd_rsi_signals.xlsx', index=True)
+    data.to_excel('macd_rsi_supertrend_signals.xlsx', index=True)
 
-    print("Data with Buy/Sell signals has been written to macd_rsi_signals.xlsx")
+    print("Data with Buy/Sell signals has been written to macd_rsi_supertrend_signals.xlsx")
