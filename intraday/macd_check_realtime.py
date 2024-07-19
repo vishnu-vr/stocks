@@ -3,6 +3,7 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import pytz
 import time
+from plyer import notification
 
 # Function to calculate EMA
 def ema(series, span):
@@ -94,7 +95,12 @@ def get_stock_data(ticker):
 
 # Inform the user to buy
 def prompt_user_buy():
-    print("Buy this now!")
+    notification.notify(
+        title='Buy Alert',
+        message='Buy this stock now!',
+        app_name='Stock Alert',
+        timeout=10  # Duration in seconds
+    )
     return None
 
 def live_day_run(data, i):
