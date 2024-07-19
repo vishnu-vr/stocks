@@ -72,7 +72,7 @@ if __name__ == "__main__":
     last_buy_price = None
     for i in range(1, len(data)):
         if previous_signal == 'Sell' and data['MACD_Signal'].iloc[i] == 'Positive_Crossover' and data['RSI_Signal'].iloc[i] == 'Below_70':
-            data['Final_Signal'].iloc[i] = 'Buy'
+            data.loc[data.index[i], 'Final_Signal'] = 'Buy'
             last_buy_price = data['Close'].iloc[i]
             previous_signal = 'Buy'
         elif previous_signal == 'Buy':
@@ -81,7 +81,7 @@ if __name__ == "__main__":
                ((data['Open'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002 or \
                ((data['Close'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002:
                 last_buy_price = None
-                data['Final_Signal'].iloc[i] = 'Sell'
+                data.loc[data.index[i], 'Final_Signal'] = 'Sell'
                 previous_signal = 'Sell'
 
     # Convert datetime index to timezone-naive
