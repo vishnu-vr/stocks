@@ -94,11 +94,12 @@ def get_stock_data(ticker):
     return data
 
 def prompt_user_buy(price, target_price):
+    print(f'Buy this stock now at {price}! Target price: {target_price:.2f}')
     notification.notify(
         title='Buy Alert',
         message=f'Buy this stock now at {price}! Target price: {target_price:.2f}',
         app_name='Stock Alert',
-        timeout=10  # Duration in seconds
+        timeout=20  # Duration in seconds
     )
 
 def live_day_run(data, i, price):
@@ -117,8 +118,8 @@ def live_day_run(data, i, price):
     if abs(time_difference) <= timedelta(minutes=2):
         prompt_user_buy(price, target_price)
 
-def main_driver(live_day=False):
-    ticker = 'IREDA.NS'
+def main_driver(live_day, ticker):
+    # ticker = 'ANANTRAJ.NS'
     data = get_stock_data(ticker)
 
     # Calculate MACD
@@ -158,19 +159,21 @@ def main_driver(live_day=False):
                 data.loc[data.index[i], 'Final_Signal'] = 'Sell'
                 previous_signal = 'Sell'
 
-    # Convert datetime index to timezone-naive
-    data.index = data.index.tz_localize(None)
+    if not live_day:
+        # Convert datetime index to timezone-naive
+        data.index = data.index.tz_localize(None)
 
-    # Write the DataFrame to an Excel file
-    data.to_excel('macd_rsi_supertrend_signals.xlsx', index=True)
+        # Write the DataFrame to an Excel file
+        data.to_excel('macd_rsi_supertrend_signals.xlsx', index=True)
 
-    print("Data with Buy/Sell signals has been written to macd_rsi_supertrend_signals.xlsx")
+        print("Data with Buy/Sell signals has been written to macd_rsi_supertrend_signals.xlsx")
 
 if __name__ == "__main__":
+    ticker = 'RCF.NS'
     live_day = False
     if live_day:
         while True:
-            main_driver(live_day)
-            time.sleep(60)  # Delay for 1 minute
+            main_driver(live_day, ticker)
+            time.sleep(30)  # Delay for 1 minute
     else:
-        main_driver(live_day)
+        main_driver(live_day, ticker)
