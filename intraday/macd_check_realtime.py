@@ -93,17 +93,15 @@ def get_stock_data(ticker):
     data.index = data.index.tz_convert('Asia/Kolkata')
     return data
 
-# Inform the user to buy
-def prompt_user_buy():
+def prompt_user_buy(price, target_price):
     notification.notify(
         title='Buy Alert',
-        message='Buy this stock now!',
+        message=f'Buy this stock now at {price}! Target price: {target_price:.2f}',
         app_name='Stock Alert',
         timeout=10  # Duration in seconds
     )
-    return None
 
-def live_day_run(data, i):
+def live_day_run(data, i, price):
     # Get the current system timestamp and make it timezone-aware
     current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
 
@@ -112,12 +110,15 @@ def live_day_run(data, i):
 
     time_difference = current_time - data_timestamp
 
+    # Calculate the target price with a 0.2% increase
+    target_price = price * 1.002
+
     # Check if the time difference is less than or equal to 2 minutes
     if abs(time_difference) <= timedelta(minutes=2):
-        prompt_user_buy()
+        prompt_user_buy(price, target_price)
 
 def main_driver(live_day=False):
-    ticker = 'ELECTCAST.NS'
+    ticker = 'IREDA.NS'
     data = get_stock_data(ticker)
 
     # Calculate MACD
@@ -146,7 +147,7 @@ def main_driver(live_day=False):
             previous_signal = 'Buy'
 
             if live_day:
-                live_day_run(data, i)
+                live_day_run(data, i, last_buy_price)
 
         elif previous_signal == 'Buy':
             if ((data['High'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002 or \
