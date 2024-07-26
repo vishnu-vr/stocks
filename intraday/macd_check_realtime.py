@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 import pytz
 import time
 from plyer import notification
+import os
+import sys
 
 # Function to calculate EMA
 def ema(series, span):
@@ -81,8 +83,8 @@ def check_macd_signals(data):
 def check_rsi_signals(data):
     rsi_signals = [''] * len(data)
     for i in range(1, len(data)):
-        if data['RSI'].iloc[i] < 70:
-            rsi_signals[i] = 'Below_70'
+        if data['RSI'].iloc[i] < 40:
+            rsi_signals[i] = 'Below_40'
     return rsi_signals
 
 # Function to fetch stock data
@@ -142,7 +144,7 @@ def main_driver(live_day, ticker):
     previous_signal = 'Sell'
     last_buy_price = None
     for i in range(1, len(data)):
-        if previous_signal == 'Sell' and data['MACD_Signal'].iloc[i] == 'Positive_Crossover' and data['RSI_Signal'].iloc[i] == 'Below_70':
+        if previous_signal == 'Sell' and data['MACD_Signal'].iloc[i] == 'Positive_Crossover' and data['RSI_Signal'].iloc[i] == 'Below_40':
             data.loc[data.index[i], 'Final_Signal'] = 'Buy'
             last_buy_price = data['Close'].iloc[i]
             previous_signal = 'Buy'
@@ -164,13 +166,18 @@ def main_driver(live_day, ticker):
         data.index = data.index.tz_localize(None)
 
         # Write the DataFrame to an Excel file
-        data.to_excel('macd_rsi_supertrend_signals.xlsx', index=True)
+        data.to_excel(f'macd_rsi_supertrend_signals_{ticker}.xlsx', index=True)
 
         print("Data with Buy/Sell signals has been written to macd_rsi_supertrend_signals.xlsx")
 
 if __name__ == "__main__":
-    ticker = 'RCF.NS'
+    ticker = sys.argv[1]#'STCINDIA.NS'
+
+    # Set the console window title to the ticker name
+    # ctypes.windll.user32.SetConsoleTitleA(ticker)
+    # os.system(f'title {ticker}')
     live_day = False
+    
     if live_day:
         while True:
             main_driver(live_day, ticker)
