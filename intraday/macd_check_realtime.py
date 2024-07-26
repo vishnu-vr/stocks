@@ -83,8 +83,8 @@ def check_macd_signals(data):
 def check_rsi_signals(data):
     rsi_signals = [''] * len(data)
     for i in range(1, len(data)):
-        if data['RSI'].iloc[i] < 40:
-            rsi_signals[i] = 'Below_40'
+        if data['RSI'].iloc[i] < 50:
+            rsi_signals[i] = 'Below_50'
     return rsi_signals
 
 # Function to fetch stock data
@@ -144,7 +144,7 @@ def main_driver(live_day, ticker):
     previous_signal = 'Sell'
     last_buy_price = None
     for i in range(1, len(data)):
-        if previous_signal == 'Sell' and data['MACD_Signal'].iloc[i] == 'Positive_Crossover' and data['RSI_Signal'].iloc[i] == 'Below_40':
+        if previous_signal == 'Sell' and data['MACD_Signal'].iloc[i] == 'Positive_Crossover' and data['RSI_Signal'].iloc[i] == 'Below_50':
             data.loc[data.index[i], 'Final_Signal'] = 'Buy'
             last_buy_price = data['Close'].iloc[i]
             previous_signal = 'Buy'
