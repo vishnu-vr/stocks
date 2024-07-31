@@ -113,8 +113,8 @@ def live_day_run(data, i, price):
 
     time_difference = current_time - data_timestamp
 
-    # Calculate the target price with a 0.2% increase
-    target_price = price * 1.002
+    # Calculate the target price with a 0.3% increase
+    target_price = price * 1.003
 
     # Check if the time difference is less than or equal to 2 minutes
     if abs(time_difference) <= timedelta(minutes=2):
@@ -153,10 +153,10 @@ def main_driver(live_day, ticker):
                 live_day_run(data, i, last_buy_price)
 
         elif previous_signal == 'Buy':
-            if ((data['High'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002 or \
-               ((data['Low'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002 or \
-               ((data['Open'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002 or \
-               ((data['Close'].iloc[i] - last_buy_price) / last_buy_price) >= 0.002:
+            if ((data['High'].iloc[i] - last_buy_price) / last_buy_price) >= 0.003 or \
+               ((data['Low'].iloc[i] - last_buy_price) / last_buy_price) >= 0.003 or \
+               ((data['Open'].iloc[i] - last_buy_price) / last_buy_price) >= 0.003 or \
+               ((data['Close'].iloc[i] - last_buy_price) / last_buy_price) >= 0.003:
                 last_buy_price = None
                 data.loc[data.index[i], 'Final_Signal'] = 'Sell'
                 previous_signal = 'Sell'
