@@ -176,7 +176,7 @@ if __name__ == "__main__":
     # Set the console window title to the ticker name
     # ctypes.windll.user32.SetConsoleTitleA(ticker)
     # os.system(f'title {ticker}')
-    live_day = False
+    live_day = True
     
     if live_day:
         while True:
