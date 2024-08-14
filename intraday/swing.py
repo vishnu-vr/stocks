@@ -98,7 +98,7 @@ if __name__ == "__main__":
     nifty_stocks = fetch_nifty_stocks(nifty_stocks_file)
     
     # Specify the percentage of conditions to be met
-    percentage = 50  # Adjust this percentage as needed
+    percentage = 80  # Adjust this percentage as needed
 
     for ticker in nifty_stocks:
         print(f"Processing {ticker}...")
