@@ -34,7 +34,7 @@ def calculate_rsi(data, window=14):
 # Function to fetch stock data
 def get_stock_data(ticker):
     interval = '1d'  # 1 day interval
-    data = yf.download(ticker, period='3mo', interval=interval)  # Adjust the period as needed
+    data = yf.download(ticker, period='6mo', interval=interval)  # Adjust the period as needed
     # Convert index to timezone-aware datetime
     data.index = data.index.tz_localize('Asia/Kolkata')
     return data
@@ -46,7 +46,7 @@ def fetch_nifty_stocks(file_path):
     nifty_stocks = df['Symbol'].apply(lambda x: x.strip() + '.NS').tolist()
     return nifty_stocks
 
-def main_driver(ticker):
+def main_driver(ticker, percentage):
     data = get_stock_data(ticker)
 
     # Calculate MACD
@@ -62,28 +62,47 @@ def main_driver(ticker):
 
     # Check conditions on the latest row
     latest_row = data.iloc[-1]
-    
-    conditions_met = (
-        latest_row['RSI'] < 60 and  # Condition 1: RSI is below 60
-        latest_row['MACD'] > latest_row['Signal_Line'] and  # Condition 2: MACD line is above signal line
-        latest_row['MACD'] < 0 and  # Condition 2: MACD line is under the histogram
-        latest_row['Close'] > latest_row['EMA_44'] and  # Condition 3: Above 44 EMA
-        latest_row['SMA_10'] > latest_row['SMA_20']  # Condition 4: 10 SMA greater than 20 SMA
-    )
 
-    if conditions_met:
+    # Define conditions
+    conditions = [
+        latest_row['RSI'] < 60,  # Condition 1: RSI is below 60
+        latest_row['MACD'] > latest_row['Signal_Line'],  # Condition 2: MACD line is above signal line
+        latest_row['MACD'] < 0,  # Condition 3: MACD line is under the histogram
+        latest_row['Close'] > latest_row['EMA_44'],  # Condition 4: Above 44 EMA
+        latest_row['SMA_10'] > latest_row['SMA_20']  # Condition 5: 10 SMA greater than 20 SMA
+    ]
+
+    # Calculate number of conditions to meet
+    num_conditions = len(conditions)
+    num_conditions_to_meet = int(num_conditions * (percentage / 100))
+
+    # Check if MACD condition is met
+    macd_condition_met = conditions[1] and conditions[2]  # MACD conditions
+    if not macd_condition_met:
+        print(f"MACD conditions not met for {ticker}. Skipping.")
+        return
+
+    # Count how many conditions are met including MACD
+    conditions_met_count = sum(conditions)
+
+    if conditions_met_count >= num_conditions_to_meet:
         # Save to Excel if conditions are met
-        data.to_excel(f'stock_data_{ticker}.xlsx', index=True)
+        data.to_excel(f'delete_me\\{ticker}.xlsx', index=True)
         print(f"Conditions met for {ticker}. Data saved to Excel.")
+    else:
+        print(f"Conditions not met for {ticker}. Skipping.")
 
 if __name__ == "__main__":
     # Specify the path to your text file with Nifty stocks
     nifty_stocks_file = 'ind_nifty500list.csv'
     nifty_stocks = fetch_nifty_stocks(nifty_stocks_file)
     
+    # Specify the percentage of conditions to be met
+    percentage = 50  # Adjust this percentage as needed
+
     for ticker in nifty_stocks:
         print(f"Processing {ticker}...")
         try:
-            main_driver(ticker)
+            main_driver(ticker, percentage)
         except Exception as e:
-            print(f"Failed for {ticker}...")
+            print(f"Failed for {ticker}: {e}")
