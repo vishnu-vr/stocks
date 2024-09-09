@@ -67,7 +67,7 @@ def main_driver(ticker, percentage):
     conditions = [
         latest_row['RSI'] < 60,  # Condition 1: RSI is below 60
         latest_row['MACD'] > latest_row['Signal_Line'],  # Condition 2: MACD line is above signal line
-        latest_row['MACD'] < 0,  # Condition 3: MACD line is under the histogram
+        # latest_row['MACD'] < 0,  # Condition 3: MACD line is under the histogram
         latest_row['Close'] > latest_row['EMA_44'],  # Condition 4: Above 44 EMA
         latest_row['SMA_10'] > latest_row['SMA_20']  # Condition 5: 10 SMA greater than 20 SMA
     ]
@@ -77,7 +77,7 @@ def main_driver(ticker, percentage):
     num_conditions_to_meet = int(num_conditions * (percentage / 100))
 
     # Check if MACD condition is met
-    macd_condition_met = conditions[1] and conditions[2]  # MACD conditions
+    macd_condition_met = conditions[1] and True  #conditions[2]  # MACD conditions
     if not macd_condition_met:
         print(f"MACD conditions not met for {ticker}. Skipping.")
         return
@@ -86,6 +86,8 @@ def main_driver(ticker, percentage):
     conditions_met_count = sum(conditions)
 
     if conditions_met_count >= num_conditions_to_meet:
+        data.index = data.index.tz_localize(None)
+        
         # Save to Excel if conditions are met
         data.to_excel(f'delete_me\\{ticker}.xlsx', index=True)
         print(f"Conditions met for {ticker}. Data saved to Excel.")
