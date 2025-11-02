@@ -1,9 +1,8 @@
 import pandas as pd
 import yfinance as yf
-from datetime import datetime, timedelta
-import pytz
-import time
-import os
+import warnings
+# This line ignores ALL warnings
+warnings.filterwarnings("ignore")
 
 # Function to calculate EMA
 def ema(series, span):
@@ -114,13 +113,13 @@ def main_driver(ticker, percentage):
     # For instance, you might use ADX > 25 to ensure a strong trend
     # or price close to the lower Bollinger Band for mean reversion opportunities.
     conditions = [
-        latest_row['RSI'] < 50,
-        latest_row['MACD'] > latest_row['Signal_Line'],
-        second_latest_row['MACD'] > second_latest_row['Signal_Line'],
-        latest_row['MACD'] < 0,
+        (latest_row['RSI'] < 50).bool(),
+        (latest_row['MACD'] > latest_row['Signal_Line']).bool(),
+        (second_latest_row['MACD'] > second_latest_row['Signal_Line']).bool(),
+        (latest_row['MACD'] < 0).bool(),
         # latest_row['ADX'] > 20,
         # (latest_row['Close'] > latest_row['BB_Lower']) & (latest_row['Close'] < latest_row['BB_Middle']),
-        latest_row['SMA_10'] > latest_row['SMA_20'],
+        (latest_row['SMA_10'] > latest_row['SMA_20']).bool(),
         # latest_row['+DI'] > latest_row['-DI']  # Checks if the trend is bullish
     ]
 
@@ -149,7 +148,8 @@ def main_driver(ticker, percentage):
 
 if __name__ == "__main__":
     # Specify the path to your CSV file with Nifty stocks
-    nifty_stocks_file = 'ind_nifty200list.csv'  # or 'ind_nifty500list.csv'
+    # nifty_stocks_file = 'ind_nifty200list.csv'  # or 'ind_nifty500list.csv'
+    nifty_stocks_file = 'testlist.csv'
     nifty_stocks = fetch_nifty_stocks(nifty_stocks_file)
     
     # Specify the percentage of conditions to be met
