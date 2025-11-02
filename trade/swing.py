@@ -22,11 +22,24 @@ def calculate_macd(data, slow=26, fast=12, signal=9):
     return data
 
 # Function to calculate RSI
+# def calculate_rsi(data, window=14):
+#     delta = data['Close'].diff()
+#     gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
+#     loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
+#     rs = gain / loss
+#     data['RSI'] = 100 - (100 / (1 + rs))
+#     return data
+# Function to calculate RSI - CORRECTED VERSION
 def calculate_rsi(data, window=14):
     delta = data['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
-    rs = gain / loss
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    
+    # Use Wilder's smoothing (EMA with alpha = 1/window) instead of SMA
+    avg_gain = gain.ewm(alpha=1/window, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1/window, adjust=False).mean()
+    
+    rs = avg_gain / avg_loss
     data['RSI'] = 100 - (100 / (1 + rs))
     return data
 
@@ -148,8 +161,8 @@ def main_driver(ticker, percentage):
 
 if __name__ == "__main__":
     # Specify the path to your CSV file with Nifty stocks
-    # nifty_stocks_file = 'ind_nifty200list.csv'  # or 'ind_nifty500list.csv'
-    nifty_stocks_file = 'testlist.csv'
+    nifty_stocks_file = 'ind_nifty200list.csv'  # or 'ind_nifty500list.csv'
+    # nifty_stocks_file = 'testlist.csv'
     nifty_stocks = fetch_nifty_stocks(nifty_stocks_file)
     
     # Specify the percentage of conditions to be met
