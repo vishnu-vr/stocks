@@ -149,6 +149,8 @@ def fetch_nifty_stocks(file_path):
 def main_driver(args):
     """Wrapper function for multiprocessing - takes a tuple of (ticker, percentage)"""
     ticker, percentage = args
+    result_dict = {'Ticker': ticker}
+    
     try:
         data = get_daily_data(ticker)  # This is the original daily data
         weekly_data = get_weekly_data(ticker)
@@ -197,7 +199,7 @@ def main_driver(args):
         # For instance, you might use ADX > 25 to ensure a strong trend
         # or price close to the lower Bollinger Band for mean reversion opportunities.
         conditions = [
-            # (latest_daily_row['RSI'] < 50).bool(),
+            (latest_daily_row['RSI'] < 60).bool(),
             # (latest_daily_row['MACD'] > latest_daily_row['Signal_Line']).bool(),
             # (second_latest_daily_row['MACD'] > second_latest_daily_row['Signal_Line']).bool(),
             # (latest_daily_row['MACD'] < 0).bool(),
@@ -217,6 +219,18 @@ def main_driver(args):
             is_bullish_engulfing
         ]
 
+        result_dict.update({'RSI': float(latest_daily_row['RSI']),
+                            'MACD': float(latest_daily_row['MACD']),
+                            'Signal_Line': float(latest_daily_row['Signal_Line']),
+                            'ADX': float(latest_daily_row['ADX']),
+                            'OBV': float(latest_daily_row['OBV']),
+                            'OBV_SMA': float(latest_daily_row['OBV_SMA']),
+                            'Bullish Engulfing': is_bullish_engulfing,
+                            'Weekly Trend Bullish': is_weekly_trend_bullish,
+                            'Volume Spike': (latest_daily_row['Volume'] > avg_volume_20d * 1.5).bool(),
+                            'SMA_10': float(latest_daily_row['SMA_10']),
+                            'SMA_20': float(latest_daily_row['SMA_20']),
+                            })
 
         # Calculate number of conditions to meet
         num_conditions = len(conditions)
@@ -242,6 +256,13 @@ def main_driver(args):
     except Exception as e:
         print(f"Failed for {ticker}: {e}")
 
+    return result_dict
+
+def export_summary_to_excel(summary_data, filename='summary.xlsx'):
+    df_summary = pd.DataFrame(summary_data)
+    df_summary.to_excel(f'delete_me\\{filename}', index=False)
+    print(f"Summary exported to {filename}")
+
 if __name__ == "__main__":
     # Specify the path to your CSV file with Nifty stocks
     nifty_stocks_file = 'ind_nifty200list.csv'  # or 'ind_nifty500list.csv'
@@ -260,6 +281,10 @@ if __name__ == "__main__":
     
     # Use multiprocessing Pool to process stocks in parallel
     with Pool(processes=num_processes) as pool:
-        pool.map(main_driver, tasks)
+        all_results = pool.map(main_driver, tasks)
+
+    final_summary_data = [r for r in all_results if r is not None]
+
+    export_summary_to_excel(final_summary_data)
     
     print("All stocks processed.")
