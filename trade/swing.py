@@ -1,6 +1,7 @@
 import pandas as pd
 import yfinance as yf
 import warnings
+from multiprocessing import Pool, cpu_count
 # This line ignores ALL warnings
 warnings.filterwarnings("ignore")
 
@@ -82,11 +83,59 @@ def calculate_adx(data, period=14):
 
     return data
 
-# Function to fetch stock data
-def get_stock_data(ticker):
+# Function to calculate On-Balance Volume (OBV)
+def calculate_obv(data):
+    # OBV is a running total of volume that relates volume to price change.
+    # Volume is added on up days and subtracted on down days.
+    obv = (data['Volume'].where(data['Close'] > data['Close'].shift(1), 0) +
+           data['Volume'].where(data['Close'] < data['Close'].shift(1), 0) * -1).cumsum()
+    
+    # Fill the first NaN value with the first day's volume
+    data['OBV'] = obv.fillna(data['Volume'])
+    
+    # Calculate a simple moving average of OBV (e.g., 20 period) to identify the OBV trend
+    data['OBV_SMA'] = sma(data['OBV'], 20)
+    return data
+
+# Function to check for Bullish Engulfing Pattern
+def check_bullish_engulfing(data):
+    # Ensure there are at least two rows for comparison
+    if len(data) < 2:
+        return False
+
+    latest = data.iloc[-1]
+    previous = data.iloc[-2]
+
+    # Condition 1: Previous candle must be a Bearish (Red) candle
+    prev_is_bearish = (previous['Close'] < previous['Open']).bool()
+    
+    # Condition 2: Latest candle must be a Bullish (Green) candle
+    latest_is_bullish = (latest['Close'] > latest['Open']).bool()
+    
+    # Condition 3: The latest Bullish body must engulf the previous Bearish body
+    # (i.e., latest open is below previous close, AND latest close is above previous open)
+    engulfing = (latest['Open'] < previous['Close']).bool() and \
+                (latest['Close'] > previous['Open']).bool()
+    
+    # Optional Condition 4: The engulfing should happen after a decline (price should be lower than 4 days ago)
+    # This ensures it's a 'reversal' and not just continuation
+    is_after_decline = latest['Close'] < data['Close'].iloc[-5:-1].mean()
+    
+    return prev_is_bearish and latest_is_bullish and engulfing # and is_after_decline
+
+# Old function (rename and keep its content)
+def get_daily_data(ticker):
     interval = '1d'  # 1 day interval
-    data = yf.download(ticker, period='6mo', interval=interval)  # Adjust the period as needed
+    data = yf.download(ticker, period='6mo', interval=interval)
     # Convert index to timezone-aware datetime
+    data.index = data.index.tz_localize('Asia/Kolkata')
+    return data
+
+# New function to get Weekly data
+def get_weekly_data(ticker):
+    interval = '1wk'  # 1 week interval
+    # Fetch a longer period to ensure enough data for weekly SMAs/EMAs (e.g., 2 years)
+    data = yf.download(ticker, period='2y', interval=interval)
     data.index = data.index.tz_localize('Asia/Kolkata')
     return data
 
@@ -97,67 +146,101 @@ def fetch_nifty_stocks(file_path):
     nifty_stocks = df['Symbol'].apply(lambda x: x.strip() + '.NS').tolist()
     return nifty_stocks
 
-def main_driver(ticker, percentage):
-    data = get_stock_data(ticker)
+def main_driver(args):
+    """Wrapper function for multiprocessing - takes a tuple of (ticker, percentage)"""
+    ticker, percentage = args
+    try:
+        data = get_daily_data(ticker)  # This is the original daily data
+        weekly_data = get_weekly_data(ticker)
 
-    # Calculate MACD
-    data = calculate_macd(data)
+        # Calculate MACD
+        data = calculate_macd(data)
 
-    # Calculate RSI
-    data = calculate_rsi(data)
+        # Calculate RSI
+        data = calculate_rsi(data)
 
-    # Calculate additional indicators
-    data['EMA_44'] = ema(data['Close'], 44)  # 44-period EMA
-    data['SMA_10'] = sma(data['Close'], 10)  # 10-period SMA
-    data['SMA_20'] = sma(data['Close'], 20)  # 20-period SMA
+        # Calculate additional indicators
+        data['EMA_44'] = ema(data['Close'], 44)  # 44-period EMA
+        data['SMA_10'] = sma(data['Close'], 10)  # 10-period SMA
+        data['SMA_20'] = sma(data['Close'], 20)  # 20-period SMA
 
-    # Calculate Bollinger Bands
-    data = calculate_bollinger_bands(data, window=20, num_std=2)
+        # Calculate Bollinger Bands
+        data = calculate_bollinger_bands(data, window=20, num_std=2)
 
-    # Calculate ADX
-    data = calculate_adx(data, period=14)
+        # Calculate ADX
+        data = calculate_adx(data, period=14)
 
-    # Check conditions on the latest row
-    latest_row = data.iloc[-1]
-    second_latest_row = data.iloc[-2]
-    is_bullish = latest_row['+DI'] > latest_row['-DI']
+        data = calculate_obv(data)
 
-    # Define conditions (example conditions; you can adjust as needed)
-    # For instance, you might use ADX > 25 to ensure a strong trend
-    # or price close to the lower Bollinger Band for mean reversion opportunities.
-    conditions = [
-        (latest_row['RSI'] < 50).bool(),
-        (latest_row['MACD'] > latest_row['Signal_Line']).bool(),
-        (second_latest_row['MACD'] > second_latest_row['Signal_Line']).bool(),
-        (latest_row['MACD'] < 0).bool(),
-        # latest_row['ADX'] > 20,
-        # (latest_row['Close'] > latest_row['BB_Lower']) & (latest_row['Close'] < latest_row['BB_Middle']),
-        (latest_row['SMA_10'] > latest_row['SMA_20']).bool(),
-        # latest_row['+DI'] > latest_row['-DI']  # Checks if the trend is bullish
-    ]
+        # Apply SMA to the weekly data's closing price
+        weekly_data['SMA_20'] = sma(weekly_data['Close'], 20)
+
+        # Check Price Action Reversal
+        is_bullish_engulfing = check_bullish_engulfing(data)
+
+        if is_bullish_engulfing:
+            print(f"{ticker}: Bullish Engulfing pattern detected.")
+
+        # Check conditions on the latest rows
+        latest_daily_row = data.iloc[-1]
+        second_latest_daily_row = data.iloc[-2]
+        latest_weekly_row = weekly_data.iloc[-1] # Get the latest weekly row
+        # is_bullish = latest_row['+DI'] > latest_row['-DI']
+
+        # Calculate Volume Average for Volume Spike check
+        avg_volume_20d = data['Volume'].rolling(window=20).mean().iloc[-1]
+
+        # The stock must be trading above its Weekly SMA_20
+        is_weekly_trend_bullish = float(latest_weekly_row['Close']) > float(latest_weekly_row['SMA_20'])
+
+        # Define conditions (example conditions; you can adjust as needed)
+        # For instance, you might use ADX > 25 to ensure a strong trend
+        # or price close to the lower Bollinger Band for mean reversion opportunities.
+        conditions = [
+            # (latest_daily_row['RSI'] < 50).bool(),
+            # (latest_daily_row['MACD'] > latest_daily_row['Signal_Line']).bool(),
+            # (second_latest_daily_row['MACD'] > second_latest_daily_row['Signal_Line']).bool(),
+            # (latest_daily_row['MACD'] < 0).bool(),
+            # latest_daily_row['ADX'] > 20,
+            # (latest_daily_row['Close'] > latest_daily_row['BB_Lower']) & (latest_daily_row['Close'] < latest_daily_row['BB_Middle']),
+            (latest_daily_row['SMA_10'] > latest_daily_row['SMA_20']).bool(),
+
+            # is_weekly_trend_bullish,
+
+            # # 7. Volume Spike: Latest volume > 1.5 times 20-day average volume
+            # (latest_daily_row['Volume'] > avg_volume_20d * 1.5).bool(),
+            
+            # # 8. OBV Trend: OBV is above its 20-period Simple Moving Average
+            # (latest_daily_row['OBV'] > latest_daily_row['OBV_SMA']).bool()
+            # latest_daily_row['+DI'] > latest_daily_row['-DI']  # Checks if the trend is bullish
+
+            is_bullish_engulfing
+        ]
 
 
-    # Calculate number of conditions to meet
-    num_conditions = len(conditions)
-    num_conditions_to_meet = int(num_conditions * (percentage / 100))
+        # Calculate number of conditions to meet
+        num_conditions = len(conditions)
+        num_conditions_to_meet = int(num_conditions * (percentage / 100))
 
-    # Check if MACD condition is met (as per your original logic)
-    macd_condition_met = conditions[1] and True  
-    if not macd_condition_met:
-        print(f"MACD conditions not met for {ticker}. Skipping.")
-        return
+        # # Check if MACD condition is met (as per your original logic)
+        # macd_condition_met = conditions[1] and True  
+        # if not macd_condition_met:
+        #     print(f"MACD conditions not met for {ticker}. Skipping.")
+        #     return
 
-    # Count how many conditions are met including MACD
-    conditions_met_count = sum(conditions)
+        # Count how many conditions are met including MACD
+        conditions_met_count = sum(conditions)
 
-    if conditions_met_count >= num_conditions_to_meet:
-        data.index = data.index.tz_localize(None)
-        
-        # Save to Excel if conditions are met
-        data.to_excel(f'delete_me\\{ticker}.xlsx', index=True)
-        print(f"Conditions met for {ticker}. Data saved to Excel.")
-    else:
-        print(f"Conditions not met for {ticker}. Skipping.")
+        if conditions_met_count >= num_conditions_to_meet:
+            data.index = data.index.tz_localize(None)
+            
+            # Save to Excel if conditions are met
+            data.to_excel(f'delete_me\\{ticker}.xlsx', index=True)
+            print(f"Conditions met for {ticker}. Data saved to Excel.")
+        else:
+            print(f"Conditions not met for {ticker}. Skipping.")
+    except Exception as e:
+        print(f"Failed for {ticker}: {e}")
 
 if __name__ == "__main__":
     # Specify the path to your CSV file with Nifty stocks
@@ -168,9 +251,15 @@ if __name__ == "__main__":
     # Specify the percentage of conditions to be met
     percentage = 100  # Adjust as needed
 
-    for ticker in nifty_stocks:
-        print(f"Processing {ticker}...")
-        try:
-            main_driver(ticker, percentage)
-        except Exception as e:
-            print(f"Failed for {ticker}: {e}")
+    # Create a list of (ticker, percentage) tuples for multiprocessing
+    tasks = [(ticker, percentage) for ticker in nifty_stocks]
+    
+    # Determine number of processes (use all available CPU cores)
+    num_processes = cpu_count()
+    print(f"Using {num_processes} processes for parallel execution...")
+    
+    # Use multiprocessing Pool to process stocks in parallel
+    with Pool(processes=num_processes) as pool:
+        pool.map(main_driver, tasks)
+    
+    print("All stocks processed.")
